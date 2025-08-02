@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Power Bill Analysis Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f8f9fa;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .summary-item {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .summary-item.success {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+        }
+        
+        .summary-item.warning {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+        }
+        
+        .summary-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .summary-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 2rem;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #ecf0f1;
+            margin-bottom: 2rem;
+        }
+        
+        .tab {
+            padding: 1rem 2rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #7f8c8d;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            color: #2c3e50;
+            border-bottom-color: #3498db;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .btn.secondary {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+        }
+        
+        .back-link {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+        
+        h1, h2, h3 {
+            margin-bottom: 1rem;
+        }
+        
+        .insights {
+            background: #e8f4fd;
+            border-left: 4px solid #3498db;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+        
+        .insights h4 {
+            color: #2980b9;
+            margin-bottom: 0.5rem;
+        }
+        
+        .controls-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .control-single {
+            max-width: 600px;
+            margin: 1rem auto 0;
+        }
+        
+        .control-group {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .control-group h5 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+            margin-bottom: 1rem;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+        }
+        
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+        }
+        
+        .control-group input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .control-actions {
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+        
+        .btn.secondary {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+            margin-left: 1rem;
+        }
+        
+        @media (max-width: 768px) {
+            .controls-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="btn back-link">← Back to Upload</a>
+    
+    <div class="header">
+        <h1>Power Bill Analysis Results</h1>
+        <p>Comprehensive analysis of your Georgia Power usage data</p>
+    </div>
+    
+    <div class="container">
+        <div id="loadingSection" class="card loading">
+            <div class="spinner"></div>
+            <p>Analyzing your power usage data...</p>
+        </div>
+        
+        <div id="errorSection" class="card" style="display: none;">
+            <h2>Analysis Error</h2>
+            <div id="errorMessage" class="error-message"></div>
+            <a href="/" class="btn">Try Again</a>
+        </div>
+        
+        <div id="resultsSection" style="display: none;">
+            <!-- Summary Cards -->
+            <div class="card">
+                <h2>Annual Cost Summary</h2>
+                <div class="summary-grid" id="summaryGrid">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Tabbed Charts -->
+            <div class="card">
+                <div class="tabs">
+                    <button class="tab active" onclick="showTab('monthly')">Monthly Comparison</button>
+                    <button class="tab" onclick="showTab('demand')">Demand Analysis</button>
+                    <button class="tab" onclick="showTab('optimization')">Load Shifting</button>
+                </div>
+                
+                <div id="monthlyTab" class="tab-content active">
+                    <h3>Monthly Cost Comparison</h3>
+                    <div class="chart-container">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                    <div class="insights">
+                        <h4>💡 Key Insights</h4>
+                        <p id="monthlyInsights">Loading insights...</p>
+                    </div>
+                </div>
+                
+                <div id="demandTab" class="tab-content">
+                    <h3>Demand Charge Analysis</h3>
+                    <div class="chart-container">
+                        <canvas id="demandChart"></canvas>
+                    </div>
+                    <div class="insights">
+                        <h4>⚡ Demand Patterns</h4>
+                        <p id="demandInsights">Loading insights...</p>
+                    </div>
+                </div>
+                
+                <div id="optimizationTab" class="tab-content">
+                    <h3>Load Shifting Optimization</h3>
+                    
+                    <!-- User Controls -->
+                    <div class="controls-section">
+                        <h4>Configure Load Shifting Scenario</h4>
+                        <div class="control-single">
+                            <div class="control-group">
+                                <h5>Load Shifting Parameters</h5>
+                                <label>Peak Demand Reduction: <span id="peakReductionValue">40%</span></label>
+                                <input type="range" id="peakReduction" min="10" max="80" value="40" step="5">
+                                <label>Peak Energy Shifted to Off-Peak: <span id="energyShiftValue">25%</span></label>
+                                <input type="range" id="energyShift" min="5" max="60" value="25" step="5">
+                                <small style="color: #666; font-style: italic;">Percentage of peak-hour energy moved to off-peak hours</small>
+                                <div class="control-actions">
+                                    <button class="btn" onclick="updateAnalysis()">Update Analysis</button>
+                                    <button class="btn secondary" onclick="resetToDefaults()">Reset to Defaults</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <canvas id="optimizationChart"></canvas>
+                    </div>
+                    <div class="insights">
+                        <h4>🎯 Load Shifting Scenarios</h4>
+                        <p id="optimizationInsights">Loading insights...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let analysisData = null;
+        let charts = {};
+        
+        // Load analysis data
+        async function loadAnalysis() {
+            const filename = window.location.pathname.split('/').pop();
+            
+            try {
+                const response = await fetch(`/api/analyze/${filename}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    analysisData = data;
+                    displayResults();
+                } else {
+                    showError(data.error || 'Analysis failed');
+                }
+            } catch (error) {
+                showError('Failed to load analysis: ' + error.message);
+            }
+        }
+        
+        function showError(message) {
+            document.getElementById('loadingSection').style.display = 'none';
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorSection').style.display = 'block';
+        }
+        
+        function displayResults() {
+            document.getElementById('loadingSection').style.display = 'none';
+            document.getElementById('resultsSection').style.display = 'block';
+            
+            createSummaryCards();
+            createMonthlyChart();
+            createDemandChart();
+            createOptimizationChart();
+            generateInsights();
+        }
+        
+        function createSummaryCards() {
+            const { summary } = analysisData;
+            const summaryGrid = document.getElementById('summaryGrid');
+            
+            const peakReductionPercent = summary.load_shifting_details.peak_reduction_percent.toFixed(0);
+            
+            const cards = [
+                {
+                    value: `$${summary.annual_costs.traditional.toFixed(0)}`,
+                    label: 'Traditional Plan',
+                    class: ''
+                },
+                {
+                    value: `$${summary.annual_costs.tou_rd.toFixed(0)}`,
+                    label: 'TOU-RD-11 Plan',
+                    class: summary.annual_costs.tou_rd < summary.annual_costs.traditional ? 'success' : ''
+                },
+                {
+                    value: `$${summary.annual_costs.tou_reo.toFixed(0)}`,
+                    label: 'TOU-REO-18 Plan',
+                    class: summary.annual_costs.tou_reo < summary.annual_costs.traditional ? 'success' : ''
+                },
+                {
+                    value: `$${summary.annual_costs.tou_rd_shifted.toFixed(0)}`,
+                    label: `Load Shifted (${peakReductionPercent}% reduction)`,
+                    class: 'success'
+                }
+            ];
+            
+            summaryGrid.innerHTML = cards.map(card => `
+                <div class="summary-item ${card.class}">
+                    <div class="summary-value">${card.value}</div>
+                    <div class="summary-label">${card.label}</div>
+                </div>
+            `).join('');
+        }
+        
+        function createMonthlyChart() {
+            const ctx = document.getElementById('monthlyChart').getContext('2d');
+            const { monthly_results } = analysisData;
+            
+            const labels = monthly_results.map(m => `${m.month} ${m.year}`);
+            
+            charts.monthly = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Traditional',
+                            data: monthly_results.map(m => m.traditional_cost),
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'TOU-RD-11',
+                            data: monthly_results.map(m => m.tou_rd_cost),
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'TOU-REO-18',
+                            data: monthly_results.map(m => m.tou_reo_cost),
+                            borderColor: '#2ecc71',
+                            backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Monthly Cost ($)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': $' + context.parsed.y.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createDemandChart() {
+            const ctx = document.getElementById('demandChart').getContext('2d');
+            const { monthly_results } = analysisData;
+            
+            const labels = monthly_results.map(m => `${m.month} ${m.year}`);
+            
+            charts.demand = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Demand Charge ($)',
+                            data: monthly_results.map(m => m.demand_charge),
+                            backgroundColor: 'rgba(241, 196, 15, 0.8)',
+                            borderColor: '#f1c40f',
+                            borderWidth: 1,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Peak Demand (kW)',
+                            data: monthly_results.map(m => m.demand_kw),
+                            type: 'line',
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Demand Charge ($)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Peak Demand (kW)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createOptimizationChart() {
+            const ctx = document.getElementById('optimizationChart').getContext('2d');
+            const { monthly_results } = analysisData;
+            
+            const labels = monthly_results.map(m => `${m.month} ${m.year}`);
+            
+            charts.optimization = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Current TOU-RD-11',
+                            data: monthly_results.map(m => m.tou_rd_cost),
+                            backgroundColor: 'rgba(52, 152, 219, 0.8)',
+                            borderColor: '#3498db',
+                            borderWidth: 1
+                        },
+                        {
+                            label: `Load Shifted (${analysisData.summary.load_shifting_details.peak_reduction_percent.toFixed(0)}% reduction)`,
+                            data: monthly_results.map(m => m.tou_rd_shifted_cost),
+                            backgroundColor: 'rgba(46, 204, 113, 0.8)',
+                            borderColor: '#2ecc71',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Monthly Savings',
+                            data: monthly_results.map(m => m.shifted_savings),
+                            type: 'line',
+                            borderColor: '#f39c12',
+                            backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Monthly Cost ($)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Monthly Savings ($)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function generateInsights() {
+            const { summary, monthly_results } = analysisData;
+            
+            // Monthly insights
+            const bestPlan = summary.annual_costs.tou_rd < summary.annual_costs.tou_reo ? 'TOU-RD-11' : 'TOU-REO-18';
+            const bestSavings = Math.max(summary.annual_savings.tou_rd_vs_traditional, summary.annual_savings.tou_reo_vs_traditional);
+            const savingsPercent = (bestSavings / summary.annual_costs.traditional * 100).toFixed(1);
+            
+            document.getElementById('monthlyInsights').innerHTML = `
+                The <strong>${bestPlan}</strong> plan offers the best savings, reducing your annual costs by 
+                <strong>$${bestSavings.toFixed(0)} (${savingsPercent}%)</strong> compared to the Traditional plan. 
+                Your peak usage represents <strong>${(summary.total_peak_usage / summary.total_usage * 100).toFixed(1)}%</strong> 
+                of total consumption, which is excellent for time-of-use plans.
+            `;
+            
+            // Demand insights
+            const avgDemand = monthly_results.reduce((sum, m) => sum + m.demand_kw, 0) / monthly_results.length;
+            const maxDemand = Math.max(...monthly_results.map(m => m.demand_kw));
+            const totalDemandCharges = summary.total_demand_charges;
+            
+            document.getElementById('demandInsights').innerHTML = `
+                Your average monthly peak demand is <strong>${avgDemand.toFixed(1)} kW</strong>, with a maximum of 
+                <strong>${maxDemand.toFixed(1)} kW</strong>. Demand charges total <strong>$${totalDemandCharges.toFixed(0)}</strong> 
+                annually. Summer months typically show higher demand due to air conditioning usage.
+            `;
+            
+            // Load shifting insights
+            const loadShiftingDetails = summary.load_shifting_details;
+            const shiftingSavings = summary.annual_savings.load_shifting_savings;
+            const energyShifted = summary.total_energy_shifted;
+            const totalUsage = summary.total_usage;
+            const shiftPercent = (energyShifted / totalUsage * 100).toFixed(1);
+            
+            const originalPeakUsage = summary.total_original_peak_usage;
+            const peakShiftPercent = (energyShifted / originalPeakUsage * 100).toFixed(1);
+            
+            document.getElementById('optimizationInsights').innerHTML = `
+                <strong>Load Shifting Results:</strong><br>
+                • <strong>Peak demand reduction:</strong> ${loadShiftingDetails.peak_reduction_percent.toFixed(0)}% through load scheduling<br>
+                • <strong>Peak energy shifted:</strong> ${energyShifted.toFixed(0)} kWh (${peakShiftPercent}% of original peak usage) moved to off-peak hours<br>
+                • <strong>Annual savings:</strong> $${shiftingSavings.toFixed(0)}/year while maintaining same total ${totalUsage.toFixed(0)} kWh consumption<br>
+                • <strong>Strategy:</strong> Move ${loadShiftingDetails.energy_shift_percent.toFixed(0)}% of peak-hour usage to cheaper off-peak periods<br><br>
+                <strong>Adjust the sliders above</strong> to explore different load shifting scenarios and see real-time cost impacts.
+            `;
+        }
+        
+        function showTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            
+            // Resize charts when tab becomes visible
+            setTimeout(() => {
+                Object.values(charts).forEach(chart => chart.resize());
+            }, 100);
+        }
+        
+        // Load analysis when page loads
+        window.addEventListener('load', function() {
+            loadAnalysis();
+            setupControls();
+        });
+        
+        function setupControls() {
+            // Setup slider event listeners
+            const sliders = ['peakReduction', 'energyShift'];
+            sliders.forEach(sliderId => {
+                const slider = document.getElementById(sliderId);
+                const valueSpan = document.getElementById(sliderId + 'Value');
+                
+                slider.addEventListener('input', function() {
+                    valueSpan.textContent = this.value + '%';
+                });
+            });
+        }
+        
+        function updateAnalysis() {
+            const peakReduction = document.getElementById('peakReduction').value;
+            const energyShift = document.getElementById('energyShift').value;
+            
+            // Show loading indicator
+            document.getElementById('optimizationInsights').innerHTML = 'Updating analysis...';
+            
+            // Get current filename
+            const filename = window.location.pathname.split('/').pop();
+            
+            // Build query parameters
+            const params = new URLSearchParams({
+                peak_reduction: peakReduction,
+                energy_shift: energyShift
+            });
+            
+            // Fetch updated analysis
+            fetch(`/api/analyze/${filename}?${params}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        analysisData = data;
+                        updateChartsAndInsights();
+                    } else {
+                        document.getElementById('optimizationInsights').innerHTML = 'Error updating analysis: ' + data.error;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('optimizationInsights').innerHTML = 'Error updating analysis: ' + error.message;
+                });
+        }
+        
+        function resetToDefaults() {
+            document.getElementById('peakReduction').value = 40;
+            document.getElementById('energyShift').value = 25;
+            
+            document.getElementById('peakReductionValue').textContent = '40%';
+            document.getElementById('energyShiftValue').textContent = '25%';
+            
+            updateAnalysis();
+        }
+        
+        function updateChartsAndInsights() {
+            // Update summary cards
+            createSummaryCards();
+            
+            // Recreate optimization chart
+            if (charts.optimization) {
+                charts.optimization.destroy();
+            }
+            createOptimizationChart();
+            
+            // Update insights
+            generateInsights();
+        }
+    </script>
+</body>
+</html>
